@@ -1867,6 +1867,101 @@ Actions.prototype.init = function()
 	}, null, null,  Editor.altKey + '+' + Editor.shiftKey + '+Q').isEnabled = isGraphEnabled;
 };
 
+// Add "Copy as Text" action for accessibility
+this.addAction('copyAsText', function()
+{
+    var graph = ui.editor.graph;
+    var model = graph.getModel();
+    var cells = model.cells;
+    var textOutput = "Diagram Structure:\n";
+    textOutput += "==================\n\n";
+    
+    var nodeCount = 0;
+    
+    // Extract all vertex cells (shapes/nodes)
+    for (var id in cells)
+    {
+        var cell = cells[id];
+        
+        // Only process vertices (shapes), not edges (connections)
+        if (cell != null && cell.vertex && cell.value != null)
+        {
+            // Get the text content of the node
+            var nodeText = '';
+            
+            if (typeof cell.value === 'object')
+            {
+                // If value is XML/object, try to get text content
+                nodeText = cell.value.textContent || cell.value.innerText || '';
+            }
+            else
+            {
+                // If value is a string, use it directly
+                nodeText = cell.value.toString();
+            }
+            
+            // Only add non-empty nodes
+            if (nodeText.trim().length > 0)
+            {
+                nodeCount++;
+                textOutput += nodeCount + ". " + nodeText.trim() + "\n";
+            }
+        }
+    }
+    
+    // Handle empty diagrams
+    if (nodeCount === 0)
+    {
+        textOutput += "(Empty diagram - no text elements found)\n";
+    }
+    
+    textOutput += "\n--\n";
+    textOutput += "Generated from draw.io diagram\n";
+    textOutput += "Total elements: " + nodeCount + "\n";
+    
+    // Copy to clipboard
+    if (navigator.clipboard && navigator.clipboard.writeText)
+    {
+        // Modern clipboard API
+        navigator.clipboard.writeText(textOutput).then(function()
+        {
+            ui.showAlert('Diagram structure copied to clipboard!');
+        }).catch(function(err)
+        {
+            // Fallback if clipboard API fails
+            copyToClipboardFallback(textOutput);
+        });
+    }
+    else
+    {
+        // Fallback for older browsers
+        copyToClipboardFallback(textOutput);
+    }
+    
+    // Fallback clipboard method
+    function copyToClipboardFallback(text)
+    {
+        var tempTextArea = document.createElement('textarea');
+        tempTextArea.value = text;
+        tempTextArea.style.position = 'fixed';
+        tempTextArea.style.opacity = '0';
+        document.body.appendChild(tempTextArea);
+        tempTextArea.select();
+        
+        try
+        {
+            document.execCommand('copy');
+            ui.showAlert('Diagram structure copied to clipboard!');
+        }
+        catch (err)
+        {
+            ui.showAlert('Failed to copy: ' + err);
+        }
+        
+        document.body.removeChild(tempTextArea);
+    }
+}, null, null, 'Ctrl+Shift+T');
+
 /**
  * Registers the given action under the given name.
  */
